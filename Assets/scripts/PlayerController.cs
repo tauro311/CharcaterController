@@ -10,6 +10,7 @@ public class PlayerController : MonoBehaviour
 
     // -------------------------------------------------inputs -------------------------------------------------------
     [SerializeField] private float _movementSpeed = 5;
+    [SerializeField] private float _pushForce = 10;
     [SerializeField] private float _jumpHeight = 1; 
     [SerializeField] private float _turnSmoothTime = 0.5f;
     private float _turnSmoothVelocity;
@@ -25,6 +26,8 @@ public class PlayerController : MonoBehaviour
     [SerializeField] Transform _sensorPosition;
     [SerializeField] float _sensorRadius = 0.5f;
     [SerializeField] LayerMask _groundLayer;
+
+    private Vector3 moveDirection;
   
 
     //------------------------------------------------------------------------------------------------------------------------------------
@@ -72,7 +75,11 @@ public class PlayerController : MonoBehaviour
 
 
 
-            Gravity();
+         Gravity();
+         if(Input.GetKeyDown(KeyCode.F))
+         {
+          RayTest();
+         }
 
 
     }
@@ -87,7 +94,7 @@ public class PlayerController : MonoBehaviour
          float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + _camera.eulerAngles.y;
          float smoothAngle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref _turnSmoothVelocity, _turnSmoothTime);
          transform.rotation = Quaternion.Euler(0, smoothAngle, 0);
-         Vector3 moveDirection = Quaternion.Euler(0, targetAngle, 0) * Vector3.forward;
+         moveDirection = Quaternion.Euler(0, targetAngle, 0) * Vector3.forward;
 
          _controller.Move(moveDirection * _movementSpeed * Time.deltaTime);
 
@@ -108,7 +115,7 @@ public class PlayerController : MonoBehaviour
 
         if(direction != Vector3.zero)
         { 
-            Vector3 moveDirection = Quaternion.Euler(0, targetAngle, 0) * Vector3.forward;
+            moveDirection = Quaternion.Euler(0, targetAngle, 0) * Vector3.forward;
             _controller.Move(moveDirection * _movementSpeed * Time.deltaTime);
         }
     }
@@ -140,10 +147,66 @@ public class PlayerController : MonoBehaviour
         _playerGravity.y = Mathf.Sqrt(_jumpHeight * -2 * _gravity);
     }
 
-    bool IsGrounded()
+    /*bool IsGrounded()
     {
         return Physics.CheckSphere(_sensorPosition.position, _sensorRadius, _groundLayer);
+    }*/
+    bool IsGrounded()
+    {
+      RaycastHit hit;
+      if(Physics.Raycast(_sensorPosition.position, -transform.up, out hit, 2))
+      {
+        if(hit.transform.gameObject.layer == 6)
+        {
+          Debug.DrawRay(_sensorPosition.position, -transform.up * 2, Color.green);
+          return true;
+        }
+        else
+        {
+          Debug.DrawRay(_sensorPosition.position, -transform.up * 2, Color.red);
+          return false;
+        }
+      }
+      else
+      {
+        return false;
+      }
     }
+
+    void OnControllerColliderHit(ControllerColliderHit hit)
+    {
+      if(hit.gameObject.layer == 7)
+      {
+
+      }
+      Rigidbody rBody = hit.collider.attachedRigidbody;
+
+      if(rBody != null)
+      {
+        Vector3 pushDirection = new Vector3(moveDirection.x, 0, moveDirection.z);
+
+        rBody.velocity = pushDirection * _pushForce / rBody.mass;
+
+      }
+
+    }
+     void RayTest()
+     {
+       RaycastHit hit;
+       if(Physics.Raycast(transform.position, transform.forward, out hit, 10))
+       {
+        Debug.Log(hit.transform.name);
+        Debug.Log(hit.transform.position);
+        Debug.Log(hit.transform.gameObject.layer);
+
+        if(hit.transform.gameObject.tag == "Enemy")
+        {
+          Enemy enemyScript = hit.transform.gameObject.GetComponent<Enemy>();
+          enemyScript.TakeDamage();
+        }
+
+       }
+     }
 
     void OnDrawGizmos()
     {
@@ -151,6 +214,7 @@ public class PlayerController : MonoBehaviour
         Gizmos.DrawWireSphere(_sensorPosition.position, _sensorRadius);
 
     }
+
    
     
 }
